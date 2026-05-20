@@ -3,6 +3,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { ACCESS_TOKEN_KEY, http, setAuthToken } from "../api/http";
 
 const AuthContext = createContext(null);
+const AUTH_ENDPOINTS = ["/auth/login", "/auth/register", "/auth/refresh-token"];
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -37,10 +38,18 @@ export const AuthProvider = ({ children }) => {
       }
 
       try {
-        if (!existingToken) await refreshToken();
+        if (!existingToken) {
+          clearAuth();
+          return;
+        }
         await fetchCurrentUser();
       } catch {
-        clearAuth();
+        try {
+          await refreshToken();
+          await fetchCurrentUser();
+        } catch {
+          clearAuth();
+        }
       } finally {
         setInitializing(false);
       }
@@ -54,7 +63,11 @@ export const AuthProvider = ({ children }) => {
       (response) => response,
       async (error) => {
         const originalRequest = error.config;
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        const isAuthEndpoint = AUTH_ENDPOINTS.some((endpoint) =>
+          originalRequest?.url?.includes(endpoint)
+        );
+
+        if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
           originalRequest._retry = true;
           try {
             await refreshToken();
