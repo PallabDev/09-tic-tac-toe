@@ -51,7 +51,7 @@ const LobbyPage = () => {
   };
 
   return (
-    <div className="page-center">
+    <div className="page-center lobby-page">
       <Card
         title="Lobby"
         rightAction={

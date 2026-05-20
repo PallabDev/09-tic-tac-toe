@@ -33,7 +33,7 @@ export const registerUser = asyncHandler(async (req, res) => {
 
   return res
     .status(201)
-    .json(new ApiResponse(201, { user: { id: user._id, email: user.email } }, "Registered successfully"));
+    .json(new ApiResponse(201, { user: { _id: user._id, email: user.email } }, "Registered successfully"));
 });
 
 export const loginUser = asyncHandler(async (req, res) => {
@@ -53,7 +53,7 @@ export const loginUser = asyncHandler(async (req, res) => {
   return res
     .cookie("refreshToken", refreshToken, cookieOptions)
     .status(200)
-    .json(new ApiResponse(200, { accessToken, user: { id: user._id, email: user.email } }, "Logged in"));
+    .json(new ApiResponse(200, { accessToken, user: { _id: user._id, email: user.email } }, "Logged in"));
 });
 
 export const refreshAccessToken = asyncHandler(async (req, res) => {

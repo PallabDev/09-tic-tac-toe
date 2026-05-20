@@ -34,7 +34,7 @@ const AuthPage = () => {
   };
 
   return (
-    <div className="page-center">
+    <div className="page-center auth-page">
       <Card title="Tic Tac Toe Auth">
         <form onSubmit={submitHandler} className="stack">
           <input

@@ -1,8 +1,8 @@
+/* eslint-disable react-refresh/only-export-components */
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { http, setAuthToken } from "../api/http";
+import { ACCESS_TOKEN_KEY, http, setAuthToken } from "../api/http";
 
 const AuthContext = createContext(null);
-const ACCESS_TOKEN_KEY = "ttt_access_token";
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -39,7 +39,7 @@ export const AuthProvider = ({ children }) => {
       try {
         if (!existingToken) await refreshToken();
         await fetchCurrentUser();
-      } catch (_error) {
+      } catch {
         clearAuth();
       } finally {
         setInitializing(false);
@@ -59,7 +59,7 @@ export const AuthProvider = ({ children }) => {
           try {
             await refreshToken();
             return http(originalRequest);
-          } catch (_refreshError) {
+          } catch {
             clearAuth();
           }
         }

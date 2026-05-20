@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { http } from "../api/http";
+import { ACCESS_TOKEN_KEY, http } from "../api/http";
+import { createGameSocket } from "../api/socket";
 import Card from "../components/Card";
 import { useAuth } from "../context/AuthContext";
 
@@ -14,6 +15,9 @@ const RoomPage = () => {
   const { user } = useAuth();
   const [room, setRoom] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [socketStatus, setSocketStatus] = useState("connecting");
+  const [isMoving, setIsMoving] = useState(false);
+  const socketRef = useRef(null);
 
   const fetchRoom = async () => {
     try {
@@ -27,9 +31,48 @@ const RoomPage = () => {
   };
 
   useEffect(() => {
-    fetchRoom();
-    const interval = setInterval(fetchRoom, 2000);
-    return () => clearInterval(interval);
+    void Promise.resolve().then(fetchRoom);
+  }, [roomId]);
+
+  useEffect(() => {
+    const token = localStorage.getItem(ACCESS_TOKEN_KEY);
+    if (!token) {
+      return undefined;
+    }
+
+    const socket = createGameSocket(token);
+    socketRef.current = socket;
+
+    socket.on("connect", () => {
+      setSocketStatus("online");
+      socket.emit("room:join", { roomId }, (response) => {
+        if (response?.ok) {
+          setRoom(response.room);
+          setErrorMessage("");
+        } else {
+          setErrorMessage(response?.error?.message || "Unable to join realtime room");
+        }
+      });
+    });
+
+    socket.on("disconnect", () => setSocketStatus("offline"));
+    socket.on("connect_error", (error) => {
+      setSocketStatus("offline");
+      setErrorMessage(error.message || "Realtime connection failed");
+    });
+    socket.on("room:state", (nextRoom) => {
+      setRoom(nextRoom);
+      setErrorMessage("");
+      setIsMoving(false);
+    });
+
+    socket.connect();
+
+    return () => {
+      socket.emit("room:leave", { roomId });
+      socket.disconnect();
+      socketRef.current = null;
+    };
   }, [roomId]);
 
   const myPlayer = useMemo(
@@ -38,11 +81,37 @@ const RoomPage = () => {
   );
 
   const makeMove = async (cellIndex) => {
+    setIsMoving(true);
+    setErrorMessage("");
+    const socket = socketRef.current;
+
+    if (socket?.connected) {
+      socket.emit("room:move", { roomId, cellIndex }, async (response) => {
+        if (response?.ok) {
+          setRoom(response.room);
+          setIsMoving(false);
+          return;
+        }
+
+        try {
+          const restResponse = await http.post(`/rooms/${roomId}/move`, { cellIndex });
+          setRoom(restResponse.data.data.room);
+        } catch (error) {
+          setErrorMessage(response?.error?.message || parseErrorMessage(error));
+        } finally {
+          setIsMoving(false);
+        }
+      });
+      return;
+    }
+
     try {
       const response = await http.post(`/rooms/${roomId}/move`, { cellIndex });
       setRoom(response.data.data.room);
     } catch (error) {
       setErrorMessage(parseErrorMessage(error));
+    } finally {
+      setIsMoving(false);
     }
   };
 
@@ -61,7 +130,7 @@ const RoomPage = () => {
   };
 
   return (
-    <div className="page-center">
+    <div className="page-center game-page">
       <Card
         title={`Room ${roomId}`}
         rightAction={
@@ -80,23 +149,38 @@ const RoomPage = () => {
           </div>
         ) : (
           <>
-            <p className="muted-text">Status: {room.status}</p>
-            <p className="muted-text">Your symbol: {myPlayer?.symbol || "Not joined"}</p>
-            <p className="muted-text">
+            <div className="status-grid">
+              <div className="status-pill">
+                <span>Game</span>
+                <strong>{room.status}</strong>
+              </div>
+              <div className="status-pill">
+                <span>You</span>
+                <strong>{myPlayer?.symbol || "Spectator"}</strong>
+              </div>
+              <div className="status-pill">
+                <span>Realtime</span>
+                <strong className={socketStatus === "online" ? "online-text" : ""}>{socketStatus}</strong>
+              </div>
+            </div>
+            <div className="turn-banner">
               {room.status === "finished"
                 ? room.winner === "DRAW"
                   ? "Draw game"
-                  : `Winner is ${room.winner}`
-                : `Current turn: ${room.turn}`}
-            </p>
+                  : `${room.winner} wins`
+                : room.turn === myPlayer?.symbol
+                  ? "Your move"
+                  : `${room.turn}'s turn`}
+            </div>
             <div className="board">
               {room.board.map((cell, index) => (
                 <button
                   type="button"
                   key={index}
-                  className="board-cell"
+                  className={`board-cell ${cell ? `is-${cell.toLowerCase()}` : ""}`}
                   onClick={() => makeMove(index)}
-                  disabled={!myPlayer || room.status !== "playing" || room.turn !== myPlayer.symbol || !!cell}
+                  disabled={!myPlayer || isMoving || room.status !== "playing" || room.turn !== myPlayer.symbol || !!cell}
+                  aria-label={`Cell ${index + 1}`}
                 >
                   {cell}
                 </button>
