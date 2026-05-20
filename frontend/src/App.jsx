@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from "react-router-dom";
 import { useAuth } from "./context/AuthContext.jsx";
 import AuthPage from "./pages/AuthPage.jsx";
+import HomePage from "./pages/HomePage.jsx";
 import LobbyPage from "./pages/LobbyPage.jsx";
 import RoomPage from "./pages/RoomPage.jsx";
 
@@ -14,9 +15,10 @@ function App() {
   return (
     <div className="app-shell">
       <Routes>
+        <Route path="/" element={<HomePage />} />
         <Route path="/auth" element={<AuthPage />} />
         <Route
-          path="/"
+          path="/lobby"
           element={
             <ProtectedRoute>
               <LobbyPage />

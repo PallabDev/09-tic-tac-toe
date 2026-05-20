@@ -1,10 +1,8 @@
 import { useState } from "react";
-import { Navigate } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
 import Card from "../components/Card";
 import { useAuth } from "../context/AuthContext";
-
-const parseErrorMessage = (error) =>
-  error?.response?.data?.message || "Request failed. Please try again.";
+import { getSafeErrorMessage } from "../utils/errorMessage";
 
 const AuthPage = () => {
   const { user, login, register } = useAuth();
@@ -14,7 +12,7 @@ const AuthPage = () => {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
-  if (user) return <Navigate to="/" replace />;
+  if (user) return <Navigate to="/lobby" replace />;
 
   const submitHandler = async (event) => {
     event.preventDefault();
@@ -27,7 +25,7 @@ const AuthPage = () => {
         await register(email, password);
       }
     } catch (error) {
-      setErrorMessage(parseErrorMessage(error));
+      setErrorMessage(getSafeErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -35,7 +33,14 @@ const AuthPage = () => {
 
   return (
     <div className="page-center auth-page">
-      <Card title="Tic Tac Toe Auth">
+      <Card
+        title="Tic Tac Toe Auth"
+        rightAction={
+          <Link className="btn-ghost" to="/">
+            Home
+          </Link>
+        }
+      >
         <form onSubmit={submitHandler} className="stack">
           <input
             className="input"

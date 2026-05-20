@@ -4,10 +4,9 @@ import { ACCESS_TOKEN_KEY, http } from "../api/http";
 import { createGameSocket } from "../api/socket";
 import Card from "../components/Card";
 import { useAuth } from "../context/AuthContext";
+import { getSafeErrorMessage } from "../utils/errorMessage";
 
 const ROOM_KEY = "ttt_room_id";
-const parseErrorMessage = (error) =>
-  error?.response?.data?.message || "Request failed. Please try again.";
 
 const RoomPage = () => {
   const { roomId } = useParams();
@@ -27,7 +26,7 @@ const RoomPage = () => {
       setErrorMessage("");
       localStorage.setItem(ROOM_KEY, roomId);
     } catch (error) {
-      setErrorMessage(parseErrorMessage(error));
+      setErrorMessage(getSafeErrorMessage(error));
     }
   };
 
@@ -37,9 +36,7 @@ const RoomPage = () => {
 
   useEffect(() => {
     const token = localStorage.getItem(ACCESS_TOKEN_KEY);
-    if (!token) {
-      return undefined;
-    }
+    if (!token) return undefined;
 
     const socket = createGameSocket(token);
     socketRef.current = socket;
@@ -51,7 +48,7 @@ const RoomPage = () => {
           setRoom(response.room);
           setErrorMessage("");
         } else {
-          setErrorMessage(response?.error?.message || "Unable to join realtime room");
+          setErrorMessage("Unable to join realtime room.");
         }
       });
     });
@@ -59,7 +56,11 @@ const RoomPage = () => {
     socket.on("disconnect", () => setSocketStatus("offline"));
     socket.on("connect_error", (error) => {
       setSocketStatus("offline");
-      setErrorMessage(error.message || "Realtime connection failed");
+      setErrorMessage(
+        error?.message === "Unauthorized request"
+          ? "Your session has expired. Please sign in again."
+          : "Realtime connection failed."
+      );
     });
     socket.on("room:state", (nextRoom) => {
       setRoom(nextRoom);
@@ -99,7 +100,7 @@ const RoomPage = () => {
           const restResponse = await http.post(`/rooms/${roomId}/move`, { cellIndex });
           setRoom(restResponse.data.data.room);
         } catch (error) {
-          setErrorMessage(response?.error?.message || parseErrorMessage(error));
+          setErrorMessage(getSafeErrorMessage(error, "Move could not be played."));
         } finally {
           setIsMoving(false);
         }
@@ -111,7 +112,7 @@ const RoomPage = () => {
       const response = await http.post(`/rooms/${roomId}/move`, { cellIndex });
       setRoom(response.data.data.room);
     } catch (error) {
-      setErrorMessage(parseErrorMessage(error));
+      setErrorMessage(getSafeErrorMessage(error, "Move could not be played."));
     } finally {
       setIsMoving(false);
     }
@@ -122,7 +123,7 @@ const RoomPage = () => {
       await http.post(`/rooms/${roomId}/join`);
       await fetchRoom();
     } catch (error) {
-      setErrorMessage(parseErrorMessage(error));
+      setErrorMessage(getSafeErrorMessage(error));
     }
   };
 
@@ -143,7 +144,7 @@ const RoomPage = () => {
           const restResponse = await http.post(`/rooms/${roomId}/restart`);
           setRoom(restResponse.data.data.room);
         } catch (error) {
-          setErrorMessage(response?.error?.message || parseErrorMessage(error));
+          setErrorMessage(getSafeErrorMessage(error, "Replay could not be started."));
         } finally {
           setIsRestarting(false);
         }
@@ -155,7 +156,7 @@ const RoomPage = () => {
       const response = await http.post(`/rooms/${roomId}/restart`);
       setRoom(response.data.data.room);
     } catch (error) {
-      setErrorMessage(parseErrorMessage(error));
+      setErrorMessage(getSafeErrorMessage(error, "Replay could not be started."));
     } finally {
       setIsRestarting(false);
     }
@@ -163,7 +164,7 @@ const RoomPage = () => {
 
   const leaveToLobby = () => {
     localStorage.removeItem(ROOM_KEY);
-    navigate("/");
+    navigate("/lobby");
   };
 
   return (

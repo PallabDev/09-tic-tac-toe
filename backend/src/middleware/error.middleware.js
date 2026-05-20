@@ -7,9 +7,13 @@ export const notFoundHandler = (_req, _res, next) => {
 
 export const errorHandler = (error, _req, res, _next) => {
   const statusCode = error.statusCode || 500;
-  const message = error.message || "Internal Server Error";
+  const isServerError = statusCode >= 500;
+  const message =
+    isServerError && process.env.NODE_ENV === "production"
+      ? "Internal Server Error"
+      : error.message || "Internal Server Error";
 
   return res
     .status(statusCode)
-    .json(new ApiResponse(statusCode, { errors: error.errors || [] }, message));
+    .json(new ApiResponse(statusCode, { errors: isServerError ? [] : error.errors || [] }, message));
 };

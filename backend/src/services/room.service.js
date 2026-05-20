@@ -93,9 +93,10 @@ export const restartRoomGame = async (roomId, userId) => {
   assertRoomPlayer(room, userId);
 
   if (room.players.length < 2) throw new ApiError(400, "Need two players to replay");
+  const requestingPlayer = room.players.find((player) => String(player.user._id) === String(userId));
 
   room.board = Array(9).fill("");
-  room.turn = "X";
+  room.turn = requestingPlayer.symbol;
   room.status = "playing";
   room.winner = null;
 

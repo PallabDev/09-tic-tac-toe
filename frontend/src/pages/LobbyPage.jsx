@@ -3,10 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { http } from "../api/http";
 import Card from "../components/Card";
 import { useAuth } from "../context/AuthContext";
+import { getSafeErrorMessage } from "../utils/errorMessage";
 
 const ROOM_KEY = "ttt_room_id";
-const parseErrorMessage = (error) =>
-  error?.response?.data?.message || "Request failed. Please try again.";
 
 const LobbyPage = () => {
   const navigate = useNavigate();
@@ -24,7 +23,7 @@ const LobbyPage = () => {
       localStorage.setItem(ROOM_KEY, roomId);
       navigate(`/rooms/${roomId}`);
     } catch (error) {
-      setErrorMessage(parseErrorMessage(error));
+      setErrorMessage(getSafeErrorMessage(error));
     } finally {
       setLoading(false);
     }
@@ -39,7 +38,7 @@ const LobbyPage = () => {
       localStorage.setItem(ROOM_KEY, normalized);
       navigate(`/rooms/${normalized}`);
     } catch (error) {
-      setErrorMessage(parseErrorMessage(error));
+      setErrorMessage(getSafeErrorMessage(error));
     } finally {
       setLoading(false);
     }
