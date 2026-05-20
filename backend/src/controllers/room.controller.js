@@ -5,6 +5,7 @@ import {
   getPopulatedRoom,
   joinRoomById,
   makeRoomMove,
+  restartRoomGame,
 } from "../services/room.service.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -41,4 +42,12 @@ export const makeMove = asyncHandler(async (req, res) => {
   const room = await makeRoomMove(roomId, req.user._id, cellIndex);
   req.app.get("io")?.to(roomId).emit("room:state", room);
   return res.status(200).json(new ApiResponse(200, { room }, "Move updated"));
+});
+
+export const restartGame = asyncHandler(async (req, res) => {
+  const { roomId } = req.params;
+
+  const room = await restartRoomGame(roomId, req.user._id);
+  req.app.get("io")?.to(roomId).emit("room:state", room);
+  return res.status(200).json(new ApiResponse(200, { room }, "Game restarted"));
 });

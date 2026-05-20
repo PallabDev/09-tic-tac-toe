@@ -1,7 +1,12 @@
 import jwt from "jsonwebtoken";
 import { Server } from "socket.io";
 import { User } from "./models/user.model.js";
-import { assertRoomPlayer, getPopulatedRoom, makeRoomMove } from "./services/room.service.js";
+import {
+  assertRoomPlayer,
+  getPopulatedRoom,
+  makeRoomMove,
+  restartRoomGame,
+} from "./services/room.service.js";
 
 const toSocketError = (error) => ({
   message: error?.message || "Something went wrong",
@@ -51,6 +56,16 @@ export const attachSocketServer = (httpServer, app) => {
     socket.on("room:move", async ({ roomId, cellIndex }, callback) => {
       try {
         const room = await makeRoomMove(roomId, socket.user._id, cellIndex);
+        io.to(roomId).emit("room:state", room);
+        callback?.({ ok: true, room });
+      } catch (error) {
+        callback?.({ ok: false, error: toSocketError(error) });
+      }
+    });
+
+    socket.on("room:restart", async ({ roomId }, callback) => {
+      try {
+        const room = await restartRoomGame(roomId, socket.user._id);
         io.to(roomId).emit("room:state", room);
         callback?.({ ok: true, room });
       } catch (error) {

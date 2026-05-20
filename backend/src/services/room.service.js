@@ -87,3 +87,20 @@ export const makeRoomMove = async (roomId, userId, cellIndex) => {
 
   return room;
 };
+
+export const restartRoomGame = async (roomId, userId) => {
+  const room = await getPopulatedRoom(roomId);
+  assertRoomPlayer(room, userId);
+
+  if (room.players.length < 2) throw new ApiError(400, "Need two players to replay");
+
+  room.board = Array(9).fill("");
+  room.turn = "X";
+  room.status = "playing";
+  room.winner = null;
+
+  await room.save();
+  await room.populate("players.user", "email");
+
+  return room;
+};

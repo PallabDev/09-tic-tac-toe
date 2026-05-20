@@ -17,6 +17,7 @@ const RoomPage = () => {
   const [errorMessage, setErrorMessage] = useState("");
   const [socketStatus, setSocketStatus] = useState("connecting");
   const [isMoving, setIsMoving] = useState(false);
+  const [isRestarting, setIsRestarting] = useState(false);
   const socketRef = useRef(null);
 
   const fetchRoom = async () => {
@@ -64,6 +65,7 @@ const RoomPage = () => {
       setRoom(nextRoom);
       setErrorMessage("");
       setIsMoving(false);
+      setIsRestarting(false);
     });
 
     socket.connect();
@@ -121,6 +123,41 @@ const RoomPage = () => {
       await fetchRoom();
     } catch (error) {
       setErrorMessage(parseErrorMessage(error));
+    }
+  };
+
+  const restartGame = async () => {
+    setIsRestarting(true);
+    setErrorMessage("");
+    const socket = socketRef.current;
+
+    if (socket?.connected) {
+      socket.emit("room:restart", { roomId }, async (response) => {
+        if (response?.ok) {
+          setRoom(response.room);
+          setIsRestarting(false);
+          return;
+        }
+
+        try {
+          const restResponse = await http.post(`/rooms/${roomId}/restart`);
+          setRoom(restResponse.data.data.room);
+        } catch (error) {
+          setErrorMessage(response?.error?.message || parseErrorMessage(error));
+        } finally {
+          setIsRestarting(false);
+        }
+      });
+      return;
+    }
+
+    try {
+      const response = await http.post(`/rooms/${roomId}/restart`);
+      setRoom(response.data.data.room);
+    } catch (error) {
+      setErrorMessage(parseErrorMessage(error));
+    } finally {
+      setIsRestarting(false);
     }
   };
 
@@ -189,6 +226,16 @@ const RoomPage = () => {
             {room.players.length < 2 ? (
               <button className="btn-secondary" type="button" onClick={joinRoom}>
                 Join as Player O
+              </button>
+            ) : null}
+            {room.status === "finished" && myPlayer ? (
+              <button
+                className="btn-primary"
+                type="button"
+                onClick={restartGame}
+                disabled={isRestarting}
+              >
+                {isRestarting ? "Restarting..." : "Replay"}
               </button>
             ) : null}
           </>
